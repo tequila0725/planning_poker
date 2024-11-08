@@ -20,8 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Pusher from "pusher-js";
+import axios from "axios";
 
-// 最初にインターフェースを追加
+// インターフェースの定義
 interface Player {
   id: number;
   name: string;
@@ -37,6 +39,14 @@ interface RoundingMethod {
 
 interface RoundingMethods {
   [key: string]: RoundingMethod;
+}
+
+// GameStateインターフェースを追加
+interface GameState {
+  players: Player[];
+  userStory: string;
+  showResults: boolean;
+  roundingMethod: string;
 }
 
 export function PlanningPoker() {
@@ -75,7 +85,7 @@ export function PlanningPoker() {
 
   const cardValues = [1, 2, 3, 5, 8, 13, 21, "?"];
 
-  // roundingMethodsの型を修正
+  // roundingMethodsの定義
   const roundingMethods: RoundingMethods = {
     standard: {
       name: "一般的な四捨五入",
@@ -109,30 +119,60 @@ export function PlanningPoker() {
     },
   };
 
-  const addPlayer = () => {
-    const newId = Math.max(...players.map((p) => p.id)) + 1;
-    setPlayers([
-      ...players,
-      {
-        id: newId,
-        name: `プレイヤー ${newId}`,
-        vote: null,
-        revealed: false,
-        isEditing: false,
-      },
-    ]);
-  };
-
-  const removePlayer = (playerId: number) => {
-    if (players.length > 1) {
-      setPlayers(players.filter((p) => p.id !== playerId));
-      if (currentPlayer === playerId) {
-        setCurrentPlayer(players[0].id);
-      }
+  // axios.post呼び出しを修正
+  const handleServerUpdate = async (event: string, gameState: GameState) => {
+    try {
+      await axios.post("/api/pusher", {
+        event,
+        gameState,
+      });
+    } catch (error) {
+      console.error("Server update error:", error);
     }
   };
 
-  // プレイヤー関連の関数を修正
+  // プレイヤーの追加
+  const addPlayer = async () => {
+    const newId = Math.max(...players.map((p) => p.id)) + 1;
+    const newPlayer: Player = {
+      id: newId,
+      name: `プレイヤー ${newId}`,
+      vote: null,
+      revealed: false,
+      isEditing: false,
+    };
+    const updatedPlayers = [...players, newPlayer];
+    setPlayers(updatedPlayers);
+
+    const gameState: GameState = {
+      players: updatedPlayers,
+      userStory,
+      showResults,
+      roundingMethod,
+    };
+    await handleServerUpdate("game-state-updated", gameState);
+  };
+
+  // プレイヤーの削除
+  const removePlayer = async (playerId: number) => {
+    if (players.length > 1) {
+      const updatedPlayers = players.filter((p) => p.id !== playerId);
+      setPlayers(updatedPlayers);
+      if (currentPlayer === playerId) {
+        setCurrentPlayer(updatedPlayers[0].id);
+      }
+
+      const gameState: GameState = {
+        players: updatedPlayers,
+        userStory,
+        showResults,
+        roundingMethod,
+      };
+      await handleServerUpdate("game-state-updated", gameState);
+    }
+  };
+
+  // 編集モードの切替
   const toggleEditMode = (playerId: number) => {
     setPlayers(
       players.map((player) =>
@@ -143,18 +183,25 @@ export function PlanningPoker() {
     );
   };
 
-  const handleNameUpdate = (playerId: number, newName: string) => {
+  // プレイヤー名の更新
+  const handleNameUpdate = async (playerId: number, newName: string) => {
     const trimmedName = newName.trim();
     if (trimmedName) {
-      setPlayers(
-        players.map((player) =>
-          player.id === playerId
-            ? { ...player, name: trimmedName, isEditing: false }
-            : player
-        )
+      const updatedPlayers = players.map((player) =>
+        player.id === playerId
+          ? { ...player, name: trimmedName, isEditing: false }
+          : player
       );
+      setPlayers(updatedPlayers);
+
+      const gameState: GameState = {
+        players: updatedPlayers,
+        userStory,
+        showResults,
+        roundingMethod,
+      };
+      await handleServerUpdate("game-state-updated", gameState);
     } else {
-      // 名前が空の場合は編集モードを解除するだけ
       setPlayers(
         players.map((player) =>
           player.id === playerId ? { ...player, isEditing: false } : player
@@ -163,14 +210,23 @@ export function PlanningPoker() {
     }
   };
 
-  const handleVote = (value: number | string) => {
-    setPlayers(
-      players.map((player) =>
-        player.id === currentPlayer ? { ...player, vote: value } : player
-      )
+  // 投票の処理
+  const handleVote = async (value: number | string) => {
+    const updatedPlayers = players.map((player) =>
+      player.id === currentPlayer ? { ...player, vote: value } : player
     );
+    setPlayers(updatedPlayers);
+
+    const gameState: GameState = {
+      players: updatedPlayers,
+      userStory,
+      showResults,
+      roundingMethod,
+    };
+    await handleServerUpdate("game-state-updated", gameState);
   };
 
+  // 平均値の計算
   const calculateAverage = () => {
     const numericVotes = players
       .map((p) => p.vote)
@@ -183,10 +239,34 @@ export function PlanningPoker() {
     return roundingMethods[roundingMethod].function(average);
   };
 
-  const resetVotes = () => {
-    setPlayers(players.map((player) => ({ ...player, vote: null })));
+  // 投票結果の表示/非表示を切り替える関数を修正
+  const toggleShowResults = async () => {
+    const newShowResults = !showResults;
+    setShowResults(newShowResults);
+
+    const gameState: GameState = {
+      players,
+      userStory,
+      showResults: newShowResults,
+      roundingMethod,
+    };
+    await handleServerUpdate("game-state-updated", gameState);
+  };
+
+  // resetVotes関数も修正
+  const resetVotes = async () => {
+    const updatedPlayers = players.map((player) => ({ ...player, vote: null }));
+    setPlayers(updatedPlayers);
     setShowResults(false);
     setUserStory("");
+
+    const gameState: GameState = {
+      players: updatedPlayers,
+      userStory: "",
+      showResults: false,
+      roundingMethod,
+    };
+    await handleServerUpdate("game-state-updated", gameState);
   };
 
   const [userStory, setUserStory] = useState("");
@@ -206,6 +286,79 @@ export function PlanningPoker() {
     }
   }, [userStory, isClient]);
 
+  // Pusherの初期化
+  useEffect(() => {
+    const pusher = new Pusher("cc8d1e25a78ef38162ae", {
+      cluster: "ap3",
+    });
+
+    // チャンネルに購読
+    const channel = pusher.subscribe("planning-poker-channel");
+
+    // イベントのリスニング
+    channel.bind("player-updated", (data: { players: Player[] }) => {
+      setPlayers(data.players);
+    });
+
+    channel.bind("vote-updated", (data: { players: Player[] }) => {
+      setPlayers(data.players);
+    });
+
+    // クリーンアップ
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+    };
+  }, []);
+
+  // ユーザーストーリー更新のハンドラーを修正
+  const handleUserStoryUpdate = async (newStory: string) => {
+    setUserStory(newStory);
+    const gameState: GameState = {
+      players,
+      userStory: newStory,
+      showResults,
+      roundingMethod,
+    };
+    await handleServerUpdate("game-state-updated", gameState);
+  };
+
+  // Pusherのイベントリスナーを修正
+  useEffect(() => {
+    const pusher = new Pusher("cc8d1e25a78ef38162ae", {
+      cluster: "ap3",
+    });
+
+    const channel = pusher.subscribe("planning-poker-channel");
+
+    channel.bind("game-state-updated", (data: { gameState: GameState }) => {
+      if (data.gameState) {
+        setPlayers(data.gameState.players);
+        setUserStory(data.gameState.userStory);
+        setShowResults(data.gameState.showResults);
+        setRoundingMethod(data.gameState.roundingMethod);
+      }
+    });
+
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+    };
+  }, []);
+
+  // 四捨五入方式の変更ハンドラーを追加
+  const handleRoundingMethodChange = async (newMethod: string) => {
+    setRoundingMethod(newMethod);
+
+    const gameState: GameState = {
+      players,
+      userStory,
+      showResults,
+      roundingMethod: newMethod,
+    };
+    await handleServerUpdate("game-state-updated", gameState);
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       <Card>
@@ -224,7 +377,7 @@ export function PlanningPoker() {
             <Input
               placeholder="ユーザーストーリーを入力してください"
               value={userStory}
-              onChange={(e) => setUserStory(e.target.value)}
+              onChange={(e) => handleUserStoryUpdate(e.target.value)}
               className="w-full"
             />
           </div>
@@ -247,13 +400,13 @@ export function PlanningPoker() {
                   {player.isEditing ? (
                     <form
                       className="flex-1 flex gap-2"
-                      onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+                      onSubmit={async (e: React.FormEvent<HTMLFormElement>) => {
                         e.preventDefault();
                         const form = e.target as HTMLFormElement;
                         const input = form.elements.namedItem(
                           "playerName"
                         ) as HTMLInputElement;
-                        handleNameUpdate(player.id, input.value);
+                        await handleNameUpdate(player.id, input.value);
                       }}
                     >
                       <Input
@@ -261,8 +414,8 @@ export function PlanningPoker() {
                         defaultValue={player.name}
                         autoFocus
                         className="flex-1"
-                        onBlur={(e) =>
-                          handleNameUpdate(player.id, e.target.value)
+                        onBlur={async (e) =>
+                          await handleNameUpdate(player.id, e.target.value)
                         }
                       />
                       <Button type="submit" size="sm">
@@ -280,7 +433,7 @@ export function PlanningPoker() {
                       {player.name}
                       <div className="flex items-center gap-2">
                         <div
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
                             toggleEditMode(player.id);
                           }}
@@ -289,9 +442,9 @@ export function PlanningPoker() {
                         </div>
                         {players.length > 1 && (
                           <div
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              removePlayer(player.id);
+                              await removePlayer(player.id);
                             }}
                           >
                             <UserMinus className="w-4 h-4 cursor-pointer hover:text-red-500" />
@@ -334,7 +487,7 @@ export function PlanningPoker() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => setShowResults(!showResults)}
+                  onClick={toggleShowResults}
                   className="bg-green-500 hover:bg-green-600 text-white"
                 >
                   {showResults ? (
@@ -379,7 +532,7 @@ export function PlanningPoker() {
                   <span className="text-sm text-gray-500">四捨五入方式:</span>
                   <Select
                     value={roundingMethod}
-                    onValueChange={setRoundingMethod}
+                    onValueChange={handleRoundingMethodChange}
                   >
                     <SelectTrigger className="w-[200px]">
                       <SelectValue placeholder="選択してください" />
