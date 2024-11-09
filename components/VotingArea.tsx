@@ -16,15 +16,14 @@ export function VotingArea({
   return (
     <div className="mb-6">
       <h3 className="text-lg font-semibold mb-2">
-        カードを選択してください (
-        {players.find((p) => p.id === currentPlayer)?.name})
+        カードを選択してください ({players.find((p) => p.id === currentPlayer)?.name})
       </h3>
-      <div className="grid grid-cols-4 gap-2 md:grid-cols-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
         {CARD_VALUES.map((value) => (
           <Button
             key={value}
             variant="outline"
-            className={`h-16 ${
+            className={`h-16 text-lg ${
               players.find((p) => p.id === currentPlayer)?.vote === value
                 ? "ring-2 ring-blue-500"
                 : ""

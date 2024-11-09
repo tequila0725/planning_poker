@@ -32,13 +32,13 @@ export function ResultsArea({
 }: ResultsAreaProps) {
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h3 className="text-lg font-semibold">投票結果</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
           <Button
             variant="outline"
             onClick={toggleShowResults}
-            className="bg-green-500 hover:bg-green-600 text-white"
+            className="bg-green-500 hover:bg-green-600 text-white w-full sm:w-auto"
           >
             {showResults ? (
               <EyeOff className="w-4 h-4 mr-2" />
@@ -50,7 +50,7 @@ export function ResultsArea({
           <Button
             variant="outline"
             onClick={resetVotes}
-            className="bg-red-500 hover:bg-red-600 text-white"
+            className="bg-red-500 hover:bg-red-600 text-white w-full sm:w-auto"
           >
             投票結果をリセット
           </Button>

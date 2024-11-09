@@ -24,12 +24,12 @@ export function PlayerList({
 }: PlayerListProps) {
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
         <h3 className="text-lg font-semibold">プレイヤー</h3>
         <Button
           variant="outline"
           onClick={addPlayer}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           <UserPlus className="w-4 h-4" />
           プレイヤーを追加
