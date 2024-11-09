@@ -9,10 +9,10 @@ app.use(cors());
 
 // Pusherの初期化
 const pusher = new Pusher({
-  appId: "1890667",
-  key: "cc8d1e25a78ef38162ae",
-  secret: "50514b804e0e2d05383a",
-  cluster: "ap3",
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: process.env.PUSHER_CLUSTER,
   useTLS: true,
 });
 
