@@ -43,10 +43,10 @@
      その後、`.env` を開いて Pusher チャンネルの認証情報を設定します:
 
      ```
-     PUSHER_APP_ID=your_pusher_app_id
-     PUSHER_KEY=your_pusher_key
-     PUSHER_SECRET=your_pusher_secret
-     PUSHER_CLUSTER=your_pusher_cluster
+     NEXT_PUBLIC_PUSHER_APP_ID=your_pusher_app_id
+     NEXT_PUBLIC_PUSHER_KEY=your_pusher_key
+     NEXT_PUBLIC_PUSHER_SECRET=your_pusher_secret
+     NEXT_PUBLIC_PUSHER_CLUSTER=your_pusher_cluster
      PORT=3001
      ```
 
